@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<title>Helsinki map overlay</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>html,body,#map{height:100%;margin:0}
+.osaalue-label{white-space:nowrap;transform:translate(-50%,-50%);font:600 12px sans-serif;color:#222;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff;pointer-events:none}
+.osaalue-label{width:auto!important;height:auto!important}
+.hide-labels .osaalue-label{display:none}</style>
+</head>
+<body>
+<div id="map"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const WMS = 'https://kartta.hel.fi/ws/geoserver/avoindata/wms';
+const attr = '© Helsingin kaupunki';
+
+const google = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {maxZoom: 20, attribution: '© Google'});
+const googleSat = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {maxZoom: 20, attribution: '© Google'});
+const opas = L.tileLayer.wms(WMS, {layers: 'avoindata:Opaskartta_Helsinki', format: 'image/png', maxZoom: 20, attribution: attr});
+const kanta = L.tileLayer.wms(WMS, {layers: 'avoindata:Kantakartta', format: 'image/png', maxZoom: 20, attribution: attr});
+const osaalueWms = L.tileLayer.wms(WMS, {layers: 'avoindata:Piirijako_osaalue', format: 'image/png', transparent: true, maxZoom: 20, attribution: attr});
+
+// Sub-district name labels (label point = inside the largest part of each area)
+const OSAALUE_LABELS = [[60.26216,25.02237,"Tapanila"],[60.25451,25.0382,"Malmin lentokenttä"],[60.18813,24.95451,"Harju"],[60.19054,24.94142,"Alppila"],[60.17426,24.91024,"Etu-Töölö"],[60.27418,25.04826,"Puistola"],[60.18405,24.9188,"Taka-Töölö"],[60.18333,24.88798,"Meilahti"],[60.20219,24.9215,"Länsi-Pasila"],[60.21404,24.9245,"Pohjois-Pasila"],[60.20217,24.93902,"Itä-Pasila"],[60.20037,24.9302,"Keski-Pasila"],[60.19362,24.91394,"Laakso"],[60.1767,24.99013,"Mustikkamaa-Korkeasaari"],[60.16447,24.90896,"Ruoholahti"],[60.16861,24.91195,"Lapinlahti"],[60.15291,24.91016,"Jätkäsaari"],[60.14992,24.92882,"Hernesaari"],[60.19526,24.95059,"Vallila"],[60.18686,24.85865,"Kuusisaari"],[60.17562,24.85887,"Lehtisaari"],[60.20946,24.87095,"Munkkivuori"],[60.20581,24.88327,"Niemenmäki"],[60.20669,24.857,"Talinranta"],[60.24207,24.8445,"Konala"],[60.20706,24.97114,"Toukola"],[60.20468,24.97888,"Arabianranta"],[60.20851,24.95936,"Kumpula"],[60.23522,25.011,"Pihlajamäki"],[60.21404,24.95038,"Käpylä"],[60.21315,24.90678,"Kivihaka"],[60.2412,24.88009,"Kannelmäki"],[60.24551,24.90072,"Maununneva"],[60.24475,24.86102,"Malminkartano"],[60.21936,24.96995,"Koskela"],[60.21386,24.97824,"Vanhakaupunki"],[60.23299,24.91274,"Pirkkola"],[60.23095,24.93167,"Maunula"],[60.22676,24.89647,"Pohjois-Haaga"],[60.22901,24.87981,"Lassila"],[60.19589,24.86687,"Vanha Munkkiniemi"],[60.25398,24.88658,"Hakuninmaa"],[60.26238,24.892,"Kuninkaantammi"],[60.24554,25.05115,"Tattariharju"],[60.24169,24.92994,"Länsi-Pakila"],[60.23838,25.20569,"Talosaari"],[60.24471,24.96018,"Itä-Pakila"],[60.22376,24.93927,"Metsälä"],[60.23054,24.95642,"Patola"],[60.22772,24.9752,"Veräjämäki"],[60.22525,24.9163,"Maunulanpuisto"],[60.23452,24.98341,"Veräjälaakso"],[60.20848,25.08404,"Itäkeskus"],[60.17282,24.96414,"Kruununhaka"],[60.17386,24.9421,"Kluuvi"],[60.16565,24.95069,"Kaartinkaupunki"],[60.16631,24.93206,"Kamppi"],[60.16106,24.93496,"Punavuori"],[60.15558,24.93902,"Eira"],[60.15573,24.94638,"Ullanlinna"],[60.16658,24.98072,"Katajanokka"],[60.15767,24.97524,"Kaivopuisto"],[60.17885,24.95075,"Siltasaari"],[60.18305,24.94387,"Linjat"],[60.18482,24.95623,"Torkkelinmäki"],[60.22748,25.03633,"Latokartano"],[60.24984,25.22186,"Karhusaari"],[60.27372,25.19313,"Landbo"],[60.2844,25.22682,"Puroniitty"],[60.16346,24.88661,"Kotkavuori"],[60.14866,24.88374,"Vattuniemi"],[60.23457,24.99601,"Pihlajisto"],[60.25966,24.99388,"Tapaninvainio"],[60.27575,24.99975,"Siltamäki"],[60.27812,25.02736,"Tapulikaupunki"],[60.27004,25.00312,"Töyrynummi"],[60.15611,24.85706,"Myllykallio"],[60.1655,24.84918,"Koivusaari"],[60.18262,24.96148,"Vilhonvuori"],[60.1904,24.98345,"Kalasatama"],[60.17966,24.97516,"Sompasaari"],[60.18228,24.9695,"Hanasaari"],[60.19476,24.97004,"Hermanninmäki"],[60.26959,25.07253,"Heikinlaakso"],[60.1965,24.98349,"Hermanninranta"],[60.19839,24.97459,"Kyläsaari"],[60.20189,24.90839,"Vanha Ruskeasuo"],[60.20128,24.89553,"Pikku Huopalahti"],[60.25552,24.84253,"Honkasuo"],[60.25819,25.05461,"Tattarisuo"],[60.26137,25.07916,"Jakomäki"],[60.18511,25.00625,"Kulosaari"],[60.20447,25.02555,"Länsi-Herttoniemi"],[60.25754,25.06635,"Alppikylä"],[60.19877,25.05972,"Roihuvuori"],[60.19999,25.04394,"Herttoniemen yritysalue"],[60.18863,25.03889,"Herttoniemenranta"],[60.19151,25.06163,"Tammisalo"],[60.22651,25.01491,"Viikin tiedepuisto"],[60.21948,25.10741,"Vartioharju"],[60.21018,25.10314,"Puotila"],[60.21523,25.08517,"Puotinharju"],[60.22048,25.06307,"Myllypuro"],[60.19971,25.08635,"Marjaniemi"],[60.2116,25.05615,"Roihupelto"],[60.21896,24.85622,"Pajamäki"],[60.21315,24.85505,"Tali"],[60.22851,24.85173,"Reimarla"],[60.22842,24.86786,"Marttila"],[60.23485,25.08156,"Kontula"],[60.23919,25.09661,"Vesala"],[60.23179,25.12398,"Mellunmäki"],[60.24036,25.05827,"Kivikko"],[60.231,25.06975,"Kurkimäki"],[60.18112,25.08307,"Vartiosaari"],[60.1638,25.07915,"Jollas"],[60.17762,25.02758,"Tullisaari"],[60.25127,24.9317,"Paloheinä"],[60.26075,24.95208,"Torpparinmäki"],[60.16779,25.01642,"Kruunuvuorenranta"],[60.16189,25.04627,"Hevossalmi"],[60.1591,25.12792,"Villinki"],[60.13932,25.07449,"Santahamina"],[60.13932,24.99604,"Suomenlinna"],[60.0874,24.89185,"Länsisaaret"],[60.12383,25.13032,"Itäsaaret"],[60.25766,24.96642,"Tuomarinkartano"],[60.26168,24.92235,"Haltiala"],[60.21309,25.00116,"Viikinranta"],[60.01097,25.01491,"Aluemeri"],[60.21702,25.13934,"Keski-Vuosaari"],[60.21326,25.15931,"Nordsjön kartano"],[60.18952,25.17752,"Uutela"],[60.22579,24.99004,"Viikinmäki"],[60.19319,25.10728,"Meri-Rastila"],[60.18715,25.14124,"Kallahti"],[60.20259,25.15555,"Aurinkolahti"],[60.21096,25.12608,"Rastila"],[60.24273,24.98348,"Pukinmäki"],[60.25291,25.00332,"Ylä-Malmi"],[60.24476,25.01702,"Ala-Malmi"],[60.21664,25.18371,"Niinisaari"],[60.23129,25.1435,"Mustavuori"],[60.25963,25.18698,"Östersundom"],[60.23832,25.16692,"Salmenkallio"],[60.22016,24.87105,"Pitäjänmäen yritysalue"],[60.1766,25.05546,"Yliskylä"],[60.21527,24.8943,"Etelä-Haaga"]];
+const osaalueLabels = L.layerGroup(OSAALUE_LABELS.map(([lat, lon, name]) =>
+  L.marker([lat, lon], {interactive: false, icon: L.divIcon({className: 'osaalue-label', html: name, iconSize: [0, 0]})})));
+const osaalue = L.layerGroup([osaalueWms, osaalueLabels]);
+
+const map = L.map('map', {center: [60.1699, 24.9384], zoom: 13, layers: [google]});
+L.control.layers(
+  {'Google Maps': google, 'Google satelliitti': googleSat, 'Helsinki opaskartta': opas, 'Helsinki kantakartta': kanta},
+  {'Osa-alueet': osaalue},
+  {collapsed: false}
+).addTo(map);
+
+// Distance measurement (click to add points, right-click removes last point)
+const fmt = m => m < 1000 ? m.toFixed(0) + ' m' : (m / 1000).toFixed(2) + ' km';
+let measuring = false, pts = [], line = L.polyline([], {color: '#e11', weight: 3}).addTo(map);
+const marks = L.layerGroup().addTo(map);
+
+const dot = L.divIcon({
+  className: '',
+  html: '<div style="width:10px;height:10px;border:2px solid #e11;background:#fff;border-radius:50%;box-sizing:border-box;cursor:grab"></div>',
+  iconSize: [10, 10], iconAnchor: [5, 5]
+});
+let mk = [];
+
+// Update line, labels and total without recreating markers (needed while dragging)
+function update() {
+  line.setLatLngs(pts);
+  let total = 0;
+  pts.forEach((p, i) => {
+    if (i) total += map.distance(pts[i - 1], p);
+    mk[i].setTooltipContent(i ? fmt(total) : 'Alku');
+  });
+  if (btnInfo) btnInfo.textContent = pts.length > 1 ? 'Yhteensä: ' + fmt(total) : '';
+}
+
+// Rebuild markers after points are added or removed
+function redraw() {
+  marks.clearLayers();
+  mk = pts.map((p, i) => {
+    const m = L.marker(p, {icon: dot, draggable: true, title: 'Klikkaa poistaaksesi, raahaa siirtääksesi'}).addTo(marks);
+    m.bindTooltip('', {permanent: true, direction: 'top', offset: [0, -6]});
+    m.on('drag', e => { pts[i] = e.target.getLatLng(); update(); });
+    m.on('click', () => { pts.splice(i, 1); redraw(); });
+    return m;
+  });
+  update();
+}
+
+let btnInfo;
+const MeasureCtl = L.Control.extend({
+  options: {position: 'topleft'},
+  onAdd() {
+    const d = L.DomUtil.create('div', 'leaflet-bar');
+    d.style.cssText = 'background:#fff;padding:6px;font:13px sans-serif';
+    const b = L.DomUtil.create('button', '', d); b.textContent = 'Mittaa';
+    const c = L.DomUtil.create('button', '', d); c.textContent = 'Tyhjennä'; c.style.marginLeft = '4px';
+    btnInfo = L.DomUtil.create('div', '', d); btnInfo.style.marginTop = '4px';
+    L.DomEvent.disableClickPropagation(d);
+    b.onclick = () => {
+      measuring = !measuring;
+      b.style.fontWeight = measuring ? 'bold' : 'normal';
+      map.getContainer().style.cursor = measuring ? 'crosshair' : '';
+    };
+    c.onclick = () => { pts = []; redraw(); };
+    return d;
+  }
+});
+new MeasureCtl().addTo(map);
+map.on('click', e => { if (measuring) { pts.push(e.latlng); redraw(); } });
+map.on('contextmenu', () => { if (measuring) { pts.pop(); redraw(); } });
+
+// Hide sub-district labels when zoomed far out
+const LABEL_MIN_ZOOM = 12;
+const toggleLabels = () => map.getContainer().classList.toggle('hide-labels', map.getZoom() < LABEL_MIN_ZOOM);
+map.on('zoomend', toggleLabels); toggleLabels();
+
+// Remember position/zoom in URL hash
+const h = location.hash.match(/#(\d+)\/([\d.]+)\/([\d.]+)/);
+if (h) map.setView([+h[2], +h[3]], +h[1]);
+map.on('moveend', () => {
+  const c = map.getCenter();
+  history.replaceState(null, '', `#${map.getZoom()}/${c.lat.toFixed(5)}/${c.lng.toFixed(5)}`);
+});
+</script>
+</body>
+</html>
